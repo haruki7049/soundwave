@@ -47,10 +47,11 @@ analyserSize = 2048
 startListening :: Player -> String -> IO ()
 startListening player canvasId = do
   graph <- ensureGraph player canvasId
-  js_resume (graphContext graph)
+  _ <- js_await =<< js_resume (graphContext graph)
   -- Reassigning the source reconnects, so playback starts at the live edge
   js_setSrc (graphAudio graph) (toJSString (T.unpack streamPath))
-  js_play (graphAudio graph)
+  _ <- js_await =<< js_play (graphAudio graph)
+  pure ()
 
 stopListening :: Player -> IO ()
 stopListening (Player ref) =
@@ -115,12 +116,12 @@ drawFrame graph canvas ctx = do
 -- Returns 'Nothing' on success, or an error message.
 uploadSelectedFile :: String -> IO (Maybe String)
 uploadSelectedFile inputId = do
-  result <-
-    fromJSString
-      <$> js_uploadSelected
-        (toJSString inputId)
-        (toJSString (T.unpack uploadField))
-        (toJSString (T.unpack uploadPath))
+  promise <-
+    js_uploadSelected
+      (toJSString inputId)
+      (toJSString (T.unpack uploadField))
+      (toJSString (T.unpack uploadPath))
+  result <- fromJSString <$> (js_toJSString =<< js_await promise)
   pure $ if null result then Nothing else Just result
 
 ----------------------------------------------------------------------------
@@ -129,8 +130,25 @@ uploadSelectedFile inputId = do
 foreign import javascript unsafe "return new AudioContext();"
   js_newAudioContext :: IO JSVal
 
-foreign import javascript interruptible "await $1.resume();"
-  js_resume :: JSVal -> IO ()
+----------------------------------------------------------------------------
+-- Promises
+--
+-- Async work is done by unsafe imports that return a Promise, which is then
+-- awaited through the single interruptible import below. This mirrors how
+-- miso does it: an interruptible import returning anything other than a
+-- JSVal makes GHC 9.14's wasm desugarer panic (stg_messagePromiseJSString).
+
+foreign import javascript interruptible "return await $1;"
+  js_await :: JSVal -> IO JSVal
+
+foreign import javascript unsafe "return $1;"
+  js_toJSString :: JSVal -> IO JSString
+
+----------------------------------------------------------------------------
+-- Web Audio (continued)
+
+foreign import javascript unsafe "return $1.resume();"
+  js_resume :: JSVal -> IO JSVal
 
 foreign import javascript unsafe "return new Audio();"
   js_newAudio :: IO JSVal
@@ -138,8 +156,8 @@ foreign import javascript unsafe "return new Audio();"
 foreign import javascript unsafe "$1.src = $2;"
   js_setSrc :: JSVal -> JSString -> IO ()
 
-foreign import javascript interruptible "await $1.play();"
-  js_play :: JSVal -> IO ()
+foreign import javascript unsafe "return $1.play();"
+  js_play :: JSVal -> IO JSVal
 
 -- | Pause and drop the connection, so the server stops sending data.
 foreign import javascript unsafe
@@ -234,9 +252,10 @@ foreign import javascript "wrapper"
 -- Upload
 
 -- | POST the selected file as multipart form data.
--- Resolves to an empty string on success, or an error message.
-foreign import javascript interruptible
+-- Returns a Promise resolving to an empty string on success, or an error message.
+foreign import javascript unsafe
   """
+  return (async () => {
   const input = document.getElementById($1);
   const file = input && input.files[0];
   if (!file) return 'no file selected';
@@ -246,5 +265,6 @@ foreign import javascript interruptible
   if (!res.ok) return 'upload failed (' + res.status + '): ' + (await res.text());
   input.value = '';
   return '';
+  })();
   """
-  js_uploadSelected :: JSString -> JSString -> JSString -> IO JSString
+  js_uploadSelected :: JSString -> JSString -> JSString -> IO JSVal
