@@ -22,6 +22,10 @@ server (backend) ──▶ shared ◀── client (frontend)
 ## 開発
 
 ```sh
+# S3 compatible storage (silo, a MinIO fork) on localhost:9000, via services-flake
+nix run .#services
+
+# in another terminal
 nix develop
 
 # frontend: static/frontend.wasm と static/ghc_wasm_jsffi.js を生成する
@@ -31,7 +35,7 @@ nix develop
 cabal run backend
 ```
 
-S3 互換ストレージ(MinIO など)が `S3_ENDPOINT` で動いている必要がある。バケットがなければ起動時に作る。
+backend は起動時に S3 互換ストレージへ接続するので、先に `nix run .#services` を起動しておく。データは `./data/` に置かれる。別のストレージを使う場合は `S3_ENDPOINT` などで指定する。バケットがなければ起動時に作る。
 
 ## 環境変数
 
