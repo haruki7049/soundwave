@@ -1,12 +1,9 @@
-source-repository-package
-  type: git
-  location: https://github.com/haskell-miso/miso.ui.git
-  tag: 2ba24836250d49a9c6b9fe4fe40fbfea060b6a76
-
+-- Native build: the backend server and the shared types.
+-- The frontend is built separately with the GHC wasm backend,
+-- see cabal-wasm.project and scripts/build-frontend.sh.
 packages:
   ./shared
   ./backend
-  ./frontend
 
 allow-newer:
   all:base

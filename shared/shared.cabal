@@ -1,7 +1,7 @@
 cabal-version:      3.0
 name:               shared
 version:            0.1.0.0
-synopsis:           Shared types and UI views for Miso and Scotty
+synopsis:           API types and routes shared by the soundwave backend and frontend
 license:            NONE
 build-type:         Simple
 
@@ -15,16 +15,15 @@ common common-options
     ghc-options:
         -Wall
 
+-- Built by both the native GHC (backend) and the wasm GHC (frontend),
+-- so keep the dependencies to pure Haskell packages only.
 library
     import:           common-options
     hs-source-dirs:   src
     exposed-modules:
-        Shared.Types
-        Shared.View
+        Shared.Api
     build-depends:
         base >= 4.14 && < 5,
         aeson >= 2.0,
-        containers,
         text,
-        miso,
-        miso-ui
+        time
