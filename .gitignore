@@ -11,3 +11,6 @@ static/ghc_wasm_jsffi.js
 
 # Local SQLite database
 *.db
+
+# Data of the local services (nix run .#services)
+data/
