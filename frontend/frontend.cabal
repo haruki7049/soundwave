@@ -28,7 +28,9 @@ executable frontend
     main-is:          Main.hs
     hs-source-dirs:   app
     other-modules:
+        Js
         Player
+        Scope
     -- Talks to the browser through the wasm JavaScript FFI,
     -- so it only builds with the wasm backend (see cabal-wasm.project)
     if !arch(wasm32)

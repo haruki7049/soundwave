@@ -13,9 +13,10 @@ import Miso.Html.Property as P
 import Miso.String (MisoString, ms)
 import Miso.UI.Button (ButtonProps (..), button_, defaultButtonProps)
 import Miso.UI.Card (CardProps (..), card_, defaultCardProps)
-import Miso.UI.Types (Variant (Outline, Primary, Secondary))
+import Miso.UI.Types (Size (Small), Variant (Outline, Primary, Secondary))
 
-import Player (Player, newPlayer, startListening, stopListening, uploadSelectedFile)
+import Player (Player, newPlayer, setScopeMode, startListening, stopListening, uploadSelectedFile)
+import Scope (ScopeMode (..), allScopeModes, scopeModeLabel)
 
 #ifdef WASM
 foreign export javascript "hs_start" main :: IO ()
@@ -32,6 +33,7 @@ data Model = Model
   { listening :: Bool
   , playbackError :: Maybe MisoString
   , uploadState :: UploadState
+  , scopeMode :: ScopeMode
   }
   deriving (Show, Eq)
 
@@ -42,11 +44,18 @@ data Action
   | UploadSelected
   | UploadFinished (Maybe MisoString)
     -- ^ 'Nothing' on success, otherwise the error message
+  | SetScopeMode ScopeMode
   | NoOp
   deriving (Show, Eq)
 
 initialModel :: Model
-initialModel = Model {listening = False, playbackError = Nothing, uploadState = UploadIdle}
+initialModel =
+  Model
+    { listening = False
+    , playbackError = Nothing
+    , uploadState = UploadIdle
+    , scopeMode = ScopeStereo
+    }
 
 -- | DOM id of the oscilloscope canvas.
 scopeId :: String
@@ -58,7 +67,7 @@ fileInputId = "sound-file"
 
 main :: IO ()
 main = do
-  player <- newPlayer
+  player <- newPlayer (scopeMode initialModel)
   startApp defaultEvents (component initialModel (updateModel player) appView)
 
 updateModel :: Player -> Action -> Effect context props Model Action
@@ -80,6 +89,9 @@ updateModel player = \case
     io $ UploadFinished . fmap ms <$> uploadSelectedFile fileInputId
   UploadFinished result ->
     modify $ \m -> m {uploadState = maybe UploadDone UploadFailed result}
+  SetScopeMode mode -> do
+    modify $ \m -> m {scopeMode = mode}
+    io_ (setScopeMode player mode)
   NoOp ->
     pure ()
 
@@ -106,6 +118,10 @@ appView m =
                 , class_ "block w-full h-48 rounded-lg border text-primary"
                 ]
                 []
+            , -- Scope view switcher, one button per mode
+              div_
+                [class_ "flex flex-wrap items-center gap-2"]
+                (map scopeButton allScopeModes)
             , div_
                 [class_ "flex items-center gap-3"]
                 ( listenButton
@@ -132,6 +148,15 @@ appView m =
         ]
     ]
   where
+    scopeButton mode =
+      button_
+        defaultButtonProps
+          { buttonVariant = if scopeMode m == mode then Primary else Outline
+          , buttonSize = Small
+          , buttonAttrs = [onClick (SetScopeMode mode)]
+          }
+        [text_ [ms (scopeModeLabel mode)]]
+
     listenButton
       | listening m =
           button_
