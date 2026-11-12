@@ -9,7 +9,7 @@ import System.Environment (lookupEnv)
 import Text.Read (readMaybe)
 import Web.Scotty
 
-import Miso.Html.Render (toHtml)
+import Miso.Html.Render (toHtmlWith)
 import Shared.Types (ServerStatus (..), initialModel)
 import Shared.View (appView, pageLayout)
 
@@ -23,7 +23,11 @@ main = do
     -- SSR endpoint: Render Miso View to HTML
     get "/" $ do
       setHeader "Content-Type" "text/html; charset=utf-8"
-      raw $ toHtml $ pageLayout (appView initialModel)
+      -- toHtml requires model ~ (), so supply the real model via toHtmlWith
+      raw $
+        mconcat $
+          map (toHtmlWith () () initialModel) $
+            pageLayout (appView initialModel)
 
     -- Static assets
     get "/static/:file" $ do
@@ -46,3 +50,4 @@ main = do
     notFound $ do
       status status404
       json $ object [ "error" .= ("Route not found" :: String) ]
+
