@@ -4,3 +4,10 @@ dist-newstyle/
 *.o
 *.hi
 result
+
+# Frontend build artifacts (scripts/build-frontend.sh)
+static/frontend.wasm
+static/ghc_wasm_jsffi.js
+
+# Local SQLite database
+*.db
