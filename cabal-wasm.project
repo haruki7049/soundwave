@@ -5,7 +5,7 @@ packages:
   ./frontend
 
 allow-newer:
-  all:base
+  all:base,
   all:template-haskell
 
 -- miso-ui at the pinned commit is built against this miso release
