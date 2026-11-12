@@ -1,7 +1,7 @@
 cabal-version:      3.0
 name:               frontend
 version:            0.1.0.0
-synopsis:           Miso frontend application
+synopsis:           soundwave frontend: listen to the mix and see it on an oscilloscope
 license:            NONE
 build-type:         Simple
 
@@ -27,9 +27,16 @@ executable frontend
     import:           common-options
     main-is:          Main.hs
     hs-source-dirs:   app
+    other-modules:
+        Player
+    -- Talks to the browser through the wasm JavaScript FFI,
+    -- so it only builds with the wasm backend (see cabal-wasm.project)
+    if !arch(wasm32)
+        buildable: False
     build-depends:
         base >= 4.14 && < 5,
-        mtl,
+        ghc-experimental,
         miso,
         miso-ui,
+        text,
         shared

@@ -1,5 +1,5 @@
 {
-  description = "Minimal Scotty web application";
+  description = "soundwave: a shared radio that mixes uploaded sounds";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -35,6 +35,13 @@
 
               # WASM toolchain (used for the frontend)
               inputs'.ghc-wasm-meta.packages.default
+
+              # post-link.mjs of the wasm toolchain runs on Node.js
+              pkgs.nodejs
+
+              # The backend shells out to ffmpeg for decoding uploads
+              # and for encoding the MP3 stream
+              pkgs.ffmpeg
             ];
 
             buildInputs = [

@@ -1,7 +1,7 @@
 cabal-version:      3.0
 name:               backend
 version:            0.1.0.0
-synopsis:           Scotty backend server for Miso application
+synopsis:           soundwave server: mixes uploaded sounds and streams the result
 license:            NONE
 build-type:         Simple
 
@@ -10,6 +10,8 @@ common common-options
     default-extensions:
         OverloadedStrings
         DeriveGeneric
+        ScopedTypeVariables
+        TypeApplications
     ghc-options:
         -Wall
         -threaded
@@ -20,13 +22,30 @@ executable backend
     import:           common-options
     main-is:          Main.hs
     hs-source-dirs:   app
+    other-modules:
+        Soundwave.Audio
+        Soundwave.Config
+        Soundwave.Db
+        Soundwave.Mixer
+        Soundwave.Station
+        Soundwave.Storage
     build-depends:
         base >= 4.14 && < 5,
-        scotty >= 0.20,
         aeson >= 2.0,
-        text,
-        bytestring,
+        async,
+        bytestring >= 0.11,
+        filepath,
         http-types,
-        miso,
-        miso-ui,
+        minio-hs,
+        sqlite-simple,
+        scotty >= 0.22,
+        stm,
+        temporary,
+        text >= 2.0,
+        time,
+        typed-process,
+        uuid,
+        vector,
+        wai-extra,
+        wai-middleware-static,
         shared
