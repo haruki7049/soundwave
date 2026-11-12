@@ -1,0 +1,32 @@
+cabal-version:      3.0
+name:               backend
+version:            0.1.0.0
+synopsis:           Scotty backend server for Miso application
+license:            NONE
+build-type:         Simple
+
+common common-options
+    default-language:   Haskell2010
+    default-extensions:
+        OverloadedStrings
+        DeriveGeneric
+    ghc-options:
+        -Wall
+        -threaded
+        -rtsopts
+        -with-rtsopts=-N
+
+executable backend
+    import:           common-options
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:
+        base >= 4.14 && < 5,
+        scotty >= 0.20,
+        aeson >= 2.0,
+        text,
+        bytestring,
+        http-types,
+        miso,
+        miso-ui,
+        shared

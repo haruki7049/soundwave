@@ -1,0 +1,26 @@
+cabal-version:      3.0
+name:               frontend
+version:            0.1.0.0
+synopsis:           Miso frontend application
+license:            NONE
+build-type:         Simple
+
+common common-options
+    default-language:   Haskell2010
+    default-extensions:
+        OverloadedStrings
+        LambdaCase
+        CPP
+    ghc-options:
+        -Wall
+
+executable frontend
+    import:           common-options
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    build-depends:
+        base >= 4.14 && < 5,
+        mtl,
+        miso,
+        miso-ui,
+        shared

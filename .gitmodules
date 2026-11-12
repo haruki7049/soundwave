@@ -1,0 +1,6 @@
+[submodule "miso"]
+	path = miso
+	url = https://github.com/dmjio/miso.git
+[submodule "miso-ui"]
+	path = miso-ui
+	url = https://github.com/haskell-miso/miso.ui.git
