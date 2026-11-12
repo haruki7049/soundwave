@@ -17,7 +17,7 @@ module Player
 import Control.Monad (forM_)
 import Data.IORef
 import qualified Data.Text as T
-import GHC.Wasm.Prim (JSString, JSVal, fromJSString, toJSString)
+import GHC.Wasm.Prim (JSString (..), JSVal, fromJSString, toJSString)
 
 import Shared.Api (streamPath, uploadField, uploadPath)
 
@@ -49,7 +49,7 @@ startListening player canvasId = do
   graph <- ensureGraph player canvasId
   _ <- js_await =<< js_resume (graphContext graph)
   -- Reassigning the source reconnects, so playback starts at the live edge
-  js_setSrc (graphAudio graph) (toJSString (T.unpack streamPath))
+  js_setSrc (graphAudio graph) (jsStr (T.unpack streamPath))
   _ <- js_await =<< js_play (graphAudio graph)
   pure ()
 
@@ -78,7 +78,7 @@ ensureGraph (Player ref) canvasId =
 -- When nothing is playing the analyser yields silence, i.e. a flat line.
 startDrawing :: Graph -> String -> IO ()
 startDrawing graph canvasId = do
-  canvas <- js_getElementById (toJSString canvasId)
+  canvas <- js_getElementById (jsStr canvasId)
   ctx2d <- js_getContext2d canvas
   callbackRef <- newIORef Nothing
   callback <- js_mkCallback $ do
@@ -118,10 +118,10 @@ uploadSelectedFile :: String -> IO (Maybe String)
 uploadSelectedFile inputId = do
   promise <-
     js_uploadSelected
-      (toJSString inputId)
-      (toJSString (T.unpack uploadField))
-      (toJSString (T.unpack uploadPath))
-  result <- fromJSString <$> (js_toJSString =<< js_await promise)
+      (jsStr inputId)
+      (jsStr (T.unpack uploadField))
+      (jsStr (T.unpack uploadPath))
+  result <- fromJSString . JSString <$> js_await promise
   pure $ if null result then Nothing else Just result
 
 ----------------------------------------------------------------------------
@@ -141,8 +141,11 @@ foreign import javascript unsafe "return new AudioContext();"
 foreign import javascript interruptible "return await $1;"
   js_await :: JSVal -> IO JSVal
 
-foreign import javascript unsafe "return $1;"
-  js_toJSString :: JSVal -> IO JSString
+-- | A Haskell string as a JS string value. 'JSString' itself cannot appear
+-- in foreign import types on this GHC (no @HsJSString@ in the C stubs), so
+-- every import takes and returns plain 'JSVal's and strings are wrapped here.
+jsStr :: String -> JSVal
+jsStr s = let JSString v = toJSString s in v
 
 ----------------------------------------------------------------------------
 -- Web Audio (continued)
@@ -154,7 +157,7 @@ foreign import javascript unsafe "return new Audio();"
   js_newAudio :: IO JSVal
 
 foreign import javascript unsafe "$1.src = $2;"
-  js_setSrc :: JSVal -> JSString -> IO ()
+  js_setSrc :: JSVal -> JSVal -> IO ()
 
 foreign import javascript unsafe "return $1.play();"
   js_play :: JSVal -> IO JSVal
@@ -198,7 +201,7 @@ foreign import javascript unsafe "return $1[$2];"
 -- Canvas
 
 foreign import javascript unsafe "return document.getElementById($1);"
-  js_getElementById :: JSString -> IO JSVal
+  js_getElementById :: JSVal -> IO JSVal
 
 foreign import javascript unsafe "return $1.getContext('2d');"
   js_getContext2d :: JSVal -> IO JSVal
@@ -267,4 +270,4 @@ foreign import javascript unsafe
   return '';
   })();
   """
-  js_uploadSelected :: JSString -> JSString -> JSString -> IO JSVal
+  js_uploadSelected :: JSVal -> JSVal -> JSVal -> IO JSVal
