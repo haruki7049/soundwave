@@ -14,6 +14,15 @@ common common-options
     ghc-options:
         -Wall
 
+    -- WASM backend: link as a reactor module that exports hs_start
+    if arch(wasm32)
+        ghc-options:
+            -no-hs-main
+            -optl-mexec-model=reactor
+            "-optl-Wl,--export=hs_start"
+        cpp-options:
+            -DWASM
+
 executable frontend
     import:           common-options
     main-is:          Main.hs
