@@ -1,3 +1,4 @@
+{-# LANGUAGE InterruptibleFFI #-}
 {-# LANGUAGE MultilineStrings #-}
 
 -- | Browser side of the radio: playing the live stream through Web Audio,
