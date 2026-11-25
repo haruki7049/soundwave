@@ -39,6 +39,7 @@ module Js
   , fillRect
   ) where
 
+import Control.Exception (evaluate)
 import GHC.Wasm.Prim (JSString (..), JSVal, fromJSString, toJSString)
 
 -- | A Haskell string as a JS string value.
@@ -49,8 +50,16 @@ jsStr s = let JSString v = toJSString s in v
 fromJSStr :: JSVal -> String
 fromJSStr = fromJSString . JSString
 
+-- | Block until a Promise settles, and throw a @JSException@ if it rejects.
+--
+-- An asynchronous import returns at once with a lazy thunk. Without forcing
+-- it here, a discarded result is never waited for, and a rejection surfaces
+-- wherever the value happens to be used, outside any exception handler.
+await :: JSVal -> IO JSVal
+await promise = js_await promise >>= evaluate
+
 foreign import javascript interruptible "return await $1;"
-  await :: JSVal -> IO JSVal
+  js_await :: JSVal -> IO JSVal
 
 ----------------------------------------------------------------------------
 -- DOM

@@ -6,6 +6,7 @@
 module Main (main) where
 
 import Control.Exception (SomeException, try)
+import Control.Monad (unless, when)
 import Miso
 import Miso.Html.Element as H hiding (button_)
 import Miso.Html.Event as E
@@ -15,7 +16,15 @@ import Miso.UI.Button (ButtonProps (..), button_, defaultButtonProps)
 import Miso.UI.Card (CardProps (..), card_, defaultCardProps)
 import Miso.UI.Types (Size (Small), Variant (Outline, Primary, Secondary))
 
-import Player (Player, newPlayer, setScopeMode, startListening, stopListening, uploadSelectedFile)
+import Player
+  ( Player
+  , newPlayer
+  , setScopeMode
+  , startListening
+  , stopListening
+  , uploadSelectedFile
+  , waitForStreamLoss
+  )
 import Scope (ScopeMode (..), allScopeModes, scopeModeLabel)
 
 #ifdef WASM
@@ -31,6 +40,9 @@ data UploadState
 
 data Model = Model
   { listening :: Bool
+  , listenSession :: Int
+    -- ^ Bumped on every start and stop, so that late results of an earlier
+    -- attempt are ignored
   , playbackError :: Maybe MisoString
   , uploadState :: UploadState
   , scopeMode :: ScopeMode
@@ -39,7 +51,10 @@ data Model = Model
 
 data Action
   = Listen
-  | ListenFailed MisoString
+  | ListenStarted Int
+    -- ^ The session whose playback has begun
+  | ListenFailed Int MisoString
+    -- ^ The session that could not start or lost the stream, and the message
   | Stop
   | UploadSelected
   | UploadFinished (Maybe MisoString)
@@ -52,6 +67,7 @@ initialModel :: Model
 initialModel =
   Model
     { listening = False
+    , listenSession = 0
     , playbackError = Nothing
     , uploadState = UploadIdle
     , scopeMode = ScopeStereo
@@ -73,20 +89,44 @@ main = do
 updateModel :: Player -> Action -> Effect context props Model Action
 updateModel player = \case
   Listen -> do
-    modify $ \m -> m {listening = True, playbackError = Nothing}
+    modify $ \m ->
+      m {listening = True, listenSession = listenSession m + 1, playbackError = Nothing}
+    session <- gets listenSession
     io $ do
       result <- try (startListening player scopeId)
       pure $ case result of
-        Left (e :: SomeException) -> ListenFailed (ms (show e))
-        Right () -> NoOp
-  ListenFailed err ->
-    modify $ \m -> m {listening = False, playbackError = Just err}
+        Left (_ :: SomeException) ->
+          ListenFailed session "再生できなかった。サーバーに接続できない可能性がある"
+        Right () -> ListenStarted session
+  ListenStarted session -> do
+    m <- get
+    let streamLost = ListenFailed session "配信が途切れた。「聴く」を押すと再開する"
+    if session == listenSession m
+      then io $ do
+        result <- try (waitForStreamLoss player)
+        pure $ case result of
+          Right False -> NoOp
+          Right True -> streamLost
+          Left (_ :: SomeException) -> streamLost
+      else
+        -- Stopped while the playback was still starting
+        unless (listening m) $ io_ (stopListening player)
+  ListenFailed session err -> do
+    m <- get
+    when (session == listenSession m) $ do
+      put m {listening = False, listenSession = session + 1, playbackError = Just err}
+      io_ (stopListening player)
   Stop -> do
-    modify $ \m -> m {listening = False}
+    modify $ \m -> m {listening = False, listenSession = listenSession m + 1}
     io_ (stopListening player)
   UploadSelected -> do
     modify $ \m -> m {uploadState = Uploading}
-    io $ UploadFinished . fmap ms <$> uploadSelectedFile fileInputId
+    io $ do
+      result <- try (uploadSelectedFile fileInputId)
+      pure $ UploadFinished $ case result of
+        Left (_ :: SomeException) ->
+          Just "アップロードできなかった。サーバーに接続できない可能性がある"
+        Right err -> ms <$> err
   UploadFinished result ->
     modify $ \m -> m {uploadState = maybe UploadDone UploadFailed result}
   SetScopeMode mode -> do

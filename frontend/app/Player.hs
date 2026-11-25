@@ -7,6 +7,7 @@ module Player
   , newPlayer
   , startListening
   , stopListening
+  , waitForStreamLoss
   , setScopeMode
   , uploadSelectedFile
   ) where
@@ -67,6 +68,20 @@ startListening player canvasId = do
 stopListening :: Player -> IO ()
 stopListening player =
   readIORef (playerGraph player) >>= mapM_ (js_stopAudio . graphAudio)
+
+-- | How long playback may stay still before the stream counts as lost.
+stallTimeoutMillis :: Int
+stallTimeoutMillis = 5000
+
+-- | Block while the stream started by 'startListening' keeps playing.
+-- Returns 'True' if it was lost, 'False' if 'stopListening' ended it.
+waitForStreamLoss :: Player -> IO Bool
+waitForStreamLoss player =
+  readIORef (playerGraph player) >>= \case
+    Nothing -> pure False
+    Just graph -> do
+      result <- await =<< js_watchStream (graphAudio graph) stallTimeoutMillis
+      pure (fromJSStr result == "lost")
 
 ensureGraph :: Player -> String -> IO Graph
 ensureGraph player canvasId =
@@ -154,6 +169,35 @@ foreign import javascript unsafe
   $1.load();
   """
   js_stopAudio :: JSVal -> IO ()
+
+-- | Returns a Promise resolving to @\'lost\'@ once playback ends, fails or
+-- stays still for the given milliseconds, or to an empty string once the
+-- source is removed. When the server goes away the browser keeps retrying
+-- without raising @error@, so the playback position is what has to be watched.
+foreign import javascript unsafe
+  """
+  const audio = $1;
+  const timeout = $2;
+  return new Promise((resolve) => {
+  let position = audio.currentTime;
+  let movedAt = performance.now();
+  const timer = setInterval(() => {
+  const now = performance.now();
+  if (audio.currentTime !== position) {
+  position = audio.currentTime;
+  movedAt = now;
+  }
+  let result = null;
+  if (!audio.hasAttribute('src')) result = '';
+  else if (audio.error || audio.ended || now - movedAt > timeout) result = 'lost';
+  if (result !== null) {
+  clearInterval(timer);
+  resolve(result);
+  }
+  }, 500);
+  });
+  """
+  js_watchStream :: JSVal -> Int -> IO JSVal
 
 foreign import javascript unsafe "return $1.createMediaElementSource($2);"
   js_createMediaElementSource :: JSVal -> JSVal -> IO JSVal
