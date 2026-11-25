@@ -1,0 +1,20 @@
+-- Wasm build: the miso frontend and the shared types.
+-- Use with: wasm32-wasi-cabal --project-file=cabal-wasm.project build frontend
+packages:
+  ./shared
+  ./frontend
+
+allow-newer:
+  all:base,
+  all:template-haskell
+
+-- miso-ui at the pinned commit is built against this miso release
+source-repository-package
+  type: git
+  location: https://github.com/dmjio/miso
+  tag: 1.15.0
+
+source-repository-package
+  type: git
+  location: https://github.com/haskell-miso/miso.ui.git
+  tag: 2ba24836250d49a9c6b9fe4fe40fbfea060b6a76
