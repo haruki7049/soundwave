@@ -65,6 +65,9 @@
               # post-link.mjs of the wasm toolchain runs on Node.js
               pkgs.nodejs
 
+              # Generates the frontend's utility CSS
+              pkgs.tailwindcss_4
+
               # The backend shells out to ffmpeg for decoding uploads
               # and for encoding the MP3 stream
               pkgs.ffmpeg

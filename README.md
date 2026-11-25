@@ -28,7 +28,7 @@ nix run .#services
 # in another terminal
 nix develop
 
-# frontend: static/frontend.wasm と static/ghc_wasm_jsffi.js を生成する
+# frontend: static/frontend.wasm、static/ghc_wasm_jsffi.js、static/tailwind.css を生成する
 ./scripts/build-frontend.sh
 
 # backend

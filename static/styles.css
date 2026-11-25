@@ -4,10 +4,3 @@ body {
   margin: 0;
   padding: 0;
 }
-
-/* Oscilloscope canvas: the stroke color is taken from the CSS color */
-#scope {
-  display: block;
-  width: 100%;
-  height: 16rem;
-}

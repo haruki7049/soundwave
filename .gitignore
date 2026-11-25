@@ -8,6 +8,7 @@ result
 # Frontend build artifacts (scripts/build-frontend.sh)
 static/frontend.wasm
 static/ghc_wasm_jsffi.js
+static/tailwind.css
 
 # Local SQLite database
 *.db

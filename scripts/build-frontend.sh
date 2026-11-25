@@ -14,4 +14,7 @@ wasm=$(wasm32-wasi-cabal "${project[@]}" list-bin frontend | tail -n 1)
 "$(wasm32-wasi-ghc --print-libdir)/post-link.mjs" --input "$wasm" --output static/ghc_wasm_jsffi.js
 cp "$wasm" static/frontend.wasm
 
+# Generate the utility classes used by the views
+tailwindcss --input frontend/styles/tailwind.css --output static/tailwind.css --minify
+
 echo "frontend built into static/"
